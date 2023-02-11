@@ -96,6 +96,8 @@ void loop(){
   scrollText(1,"Fill the water tank", 250, lcdColumns);
   delay(5000);
 
+  delay(100000);
+
   // set cursor to first column, second row
 
  
