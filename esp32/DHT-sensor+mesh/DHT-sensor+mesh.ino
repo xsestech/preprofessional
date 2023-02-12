@@ -1,14 +1,15 @@
 #include "painlessMesh.h"
 #include <Arduino.h>
-#include <DFRobot_DHT11.h>
+#include "DHT.h"
 
-#define DHT11_PIN 4
+#define DHTPIN 4 
+#define DHTTYPE DHT11 
 
 #define   MESH_PREFIX     "qwertyasdf"
 #define   MESH_PASSWORD   "12asdfghjk3"
 #define   MESH_PORT       5555
 
-DFRobot_DHT11 DHT;
+DHT dht(DHTPIN, DHTTYPE);
 Scheduler userScheduler; 
 painlessMesh  mesh; 
 
@@ -17,9 +18,13 @@ void sendMessage() ;
 Task taskSendMessage( TASK_SECOND * 2 , TASK_FOREVER, &sendMessage );
  
 void sendMessage() {
-  DHT.read(DHT11_PIN);
-  int temp = DHT.temperature;
-  int hum = DHT.humidity;
+
+  float temp = dht.readTemperature();
+  float hum = dht.readHumidity();
+  if (isnan(temp) || isnan(hum)) {
+    temp = 0;
+    hum = 0;
+  }
   DynamicJsonDocument doc(1024);
   doc["temp1"] = temp;
   doc["hum1"] = hum;
@@ -38,8 +43,8 @@ void receivedCallback( uint32_t from, String &msg ) {
   {
     Serial.print("Json Error");
   }
-  int temp = doc["temp1"];
-  int hum = doc["hum1"];
+  float temp = doc["temp1"];
+  float hum = doc["hum1"];
   Serial.print("temp: ");
   Serial.print(temp);
   Serial.print("  hum ");
@@ -56,8 +61,9 @@ void nodeTimeAdjustedCallback(int32_t offset) {
 }
 void setup() {
   Serial.begin(115200);
-//mesh.setDebugMsgTypes( ERROR | MESH_STATUS | CONNECTION | SYNC | COMMUNICATION | GENERAL | MSG_TYPES | REMOTE ); // выбираем типы
-  mesh.setDebugMsgTypes( ERROR | STARTUP | CONNECTION | MESH_STATUS);  
+  dht.begin();
+  mesh.setDebugMsgTypes( ERROR | MESH_STATUS | CONNECTION | SYNC | COMMUNICATION | GENERAL | MSG_TYPES | REMOTE ); // выбираем типы
+ // mesh.setDebugMsgTypes( ERROR | STARTUP | CONNECTION | MESH_STATUS | COMMUNICATION | GENERAL);  
  
   mesh.init( MESH_PREFIX, MESH_PASSWORD, &userScheduler, MESH_PORT );
   mesh.onReceive(&receivedCallback);
