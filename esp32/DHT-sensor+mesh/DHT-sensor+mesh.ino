@@ -9,31 +9,46 @@
 #define   MESH_PASSWORD   "12asdfghjk3"
 #define   MESH_PORT       5555
 
+// #define   STATION_SSID     "HUAWEI P smart Z"
+// #define   STATION_PASSWORD "12345987"
+// #define   STATION_PORT     5555
+// uint8_t   station_ip[4] =  {10,245,237,225};
+
+
 DHT dht(DHTPIN, DHTTYPE);
 Scheduler userScheduler; 
 painlessMesh  mesh; 
 
-void sendMessage() ; 
+String name = "k1";
+
+
+void sendMessage(); 
  
-Task taskSendMessage( TASK_SECOND * 2 , TASK_FOREVER, &sendMessage );
+Task taskSendMessage( TASK_SECOND * 1 , TASK_FOREVER, &sendMessage );
  
 void sendMessage() {
+//Отпровляемый json - файл обязательно включает в себя name и type
 
-  float temp = dht.readTemperature();
-  float hum = dht.readHumidity();
-  if (isnan(temp) || isnan(hum)) {
-    temp = 0;
-    hum = 0;
+//json = ["from",  "type",  "temp",  "hum",  "soil"]
+//type - это тип отправляемой информации (info | awake и может ещё что-то придумаю)
+
+  float _temp = dht.readTemperature();
+  float _hum = dht.readHumidity();
+  if (isnan(_temp) || isnan(_hum)) {
+    _temp = 0;
+    _hum = 0;
   }
   DynamicJsonDocument doc(1024);
-  doc["temp1"] = temp;
-  doc["hum1"] = hum;
+  doc["from"] = name;
+  doc["type"] = "info";
+  doc["temp"] = _temp;
+  doc["hum"] = _hum;
+  doc["soil"] = 0;
   String msg;
   serializeJson(doc, msg);
   mesh.sendBroadcast( msg );
 }
  
-
 void receivedCallback( uint32_t from, String &msg ) {
   String json;
   DynamicJsonDocument doc(1024);
@@ -43,16 +58,29 @@ void receivedCallback( uint32_t from, String &msg ) {
   {
     Serial.print("Json Error");
   }
-  float temp = doc["temp1"];
-  float hum = doc["hum1"];
-  Serial.print("temp: ");
-  Serial.print(temp);
-  Serial.print("  hum ");
-  Serial.println(hum);
+  if(doc["type"] == "info"){
+
+    float _temp = doc["temp"];
+    float _hum = doc["hum"];
+    float _soil = doc["soil"];
+    Serial.print("temp: ");    Serial.print(_temp);
+    Serial.print("  hum: ");   Serial.println(_hum);
+  }
+  if(doc["type"] == "awake"){
+    String _from = doc["from"];
+    Serial.print(_from);   Serial.println(" awake");
+  }
 }
+
 void newConnectionCallback(uint32_t nodeId) {
-    Serial.printf("--> startHere: New Connection, nodeId = %u\n", nodeId);
+  DynamicJsonDocument doc(1024);
+  doc["from"] = name;
+  doc["type"] = "awake";
+  String msg;
+  serializeJson(doc, msg);
+  mesh.sendBroadcast( msg );
 }
+
 void changedConnectionCallback() {
   Serial.printf("Changed connections\n");
 }
@@ -62,17 +90,23 @@ void nodeTimeAdjustedCallback(int32_t offset) {
 void setup() {
   Serial.begin(115200);
   dht.begin();
-  mesh.setDebugMsgTypes( ERROR | MESH_STATUS | CONNECTION | SYNC | COMMUNICATION | GENERAL | MSG_TYPES | REMOTE ); // выбираем типы
- // mesh.setDebugMsgTypes( ERROR | STARTUP | CONNECTION | MESH_STATUS | COMMUNICATION | GENERAL);  
+  //mesh.setDebugMsgTypes( ERROR | MESH_STATUS | CONNECTION | SYNC | COMMUNICATION | GENERAL | MSG_TYPES | REMOTE ); // выбираем типы
+  mesh.setDebugMsgTypes( ERROR | STARTUP);  
  
   mesh.init( MESH_PREFIX, MESH_PASSWORD, &userScheduler, MESH_PORT );
   mesh.onReceive(&receivedCallback);
   mesh.onNewConnection(&newConnectionCallback);
   mesh.onChangedConnections(&changedConnectionCallback);
   mesh.onNodeTimeAdjusted(&nodeTimeAdjustedCallback);
+
+  // mesh.initOTAReceive("bridge");
+  // mesh.stationManual(STATION_SSID, STATION_PASSWORD, STATION_PORT, station_ip);
+  // mesh.setRoot(true);
+  // mesh.setContainsRoot(true);
  
   userScheduler.addTask( taskSendMessage );
   taskSendMessage.enable();
+  
 
   pinMode(2, OUTPUT);
 }
