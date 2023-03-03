@@ -9,11 +9,6 @@
 #define   MESH_PASSWORD   "12asdfghjk3"
 #define   MESH_PORT       5555
 
-// #define   STATION_SSID     "HUAWEI P smart Z"
-// #define   STATION_PASSWORD "12345987"
-// #define   STATION_PORT     5555
-// uint8_t   station_ip[4] =  {10,245,237,225};
-
 
 DHT dht(DHTPIN, DHTTYPE);
 Scheduler userScheduler; 
@@ -24,7 +19,7 @@ String name = "k1";
 
 void sendMessage(); 
  
-Task taskSendMessage( TASK_SECOND * 1 , TASK_FOREVER, &sendMessage );
+Task taskSendMessage( TASK_SECOND * 1, TASK_FOREVER, &sendMessage );
  
 void sendMessage() {
 //Отпровляемый json - файл обязательно включает в себя name и type
@@ -98,11 +93,6 @@ void setup() {
   mesh.onNewConnection(&newConnectionCallback);
   mesh.onChangedConnections(&changedConnectionCallback);
   mesh.onNodeTimeAdjusted(&nodeTimeAdjustedCallback);
-
-  // mesh.initOTAReceive("bridge");
-  // mesh.stationManual(STATION_SSID, STATION_PASSWORD, STATION_PORT, station_ip);
-  // mesh.setRoot(true);
-  // mesh.setContainsRoot(true);
  
   userScheduler.addTask( taskSendMessage );
   taskSendMessage.enable();
