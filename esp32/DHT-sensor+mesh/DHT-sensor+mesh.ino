@@ -4,6 +4,7 @@
 
 #define DHTPIN 4 
 #define DHTTYPE DHT11 
+int SOILPIN =  34;
 
 #define   MESH_PREFIX     "qwertyasdf"
 #define   MESH_PASSWORD   "12asdfghjk3"
@@ -16,7 +17,6 @@ painlessMesh  mesh;
 
 String name = "k1";
 
-
 void sendMessage(); 
  
 Task taskSendMessage( TASK_SECOND * 1, TASK_FOREVER, &sendMessage );
@@ -26,19 +26,23 @@ void sendMessage() {
 
 //json = ["from",  "type",  "temp",  "hum",  "soil"]
 //type - это тип отправляемой информации (info | awake и может ещё что-то придумаю)
-
+  int _soil = map((analogRead(SOILPIN)),3400,0,100,0);
+ // Serial.print("FROM TASK: "); Serial.println(analogRead(SOILPIN));
   float _temp = dht.readTemperature();
   float _hum = dht.readHumidity();
   if (isnan(_temp) || isnan(_hum)) {
     _temp = 0;
     _hum = 0;
   }
-  DynamicJsonDocument doc(1024);
+  if (isnan(_soil)) {
+    _soil = 0;
+  }
+  DynamicJsonDocument doc(2048);
   doc["from"] = name;
   doc["type"] = "info";
   doc["temp"] = _temp;
   doc["hum"] = _hum;
-  doc["soil"] = 0;
+  doc["soil"] = _soil;
   String msg;
   serializeJson(doc, msg);
   mesh.sendBroadcast( msg );
@@ -46,7 +50,7 @@ void sendMessage() {
  
 void receivedCallback( uint32_t from, String &msg ) {
   String json;
-  DynamicJsonDocument doc(1024);
+  DynamicJsonDocument doc(2048);
   json = msg.c_str();
   DeserializationError error = deserializeJson(doc, json);
   if (error)
@@ -57,9 +61,10 @@ void receivedCallback( uint32_t from, String &msg ) {
 
     float _temp = doc["temp"];
     float _hum = doc["hum"];
-    float _soil = doc["soil"];
+    int _soil = doc["soil"];
     Serial.print("temp: ");    Serial.print(_temp);
     Serial.print("  hum: ");   Serial.println(_hum);
+    Serial.print ("soil: ");  Serial.println(_soil);
   }
   if(doc["type"] == "awake"){
     String _from = doc["from"];
@@ -99,6 +104,7 @@ void setup() {
   
 
   pinMode(2, OUTPUT);
+  pinMode(34, INPUT);
 }
  
 void loop() {
